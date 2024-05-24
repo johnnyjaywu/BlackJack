@@ -1,1 +1,1 @@
-Simple Blackjack using [Deck of Cards API]([url](https://www.deckofcardsapi.com/))
+Simple Blackjack using Deck of Cards API https://www.deckofcardsapi.com/
