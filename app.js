@@ -1,36 +1,51 @@
-// 1. Use Deck of Cards API to implement black jack game
-// 2. Button to start a new or resume previous game
-// 3. Once game is started, it does not stop until "new game" is pressed
+// APP FLOW
+// 1. Wait for user press on "New Game" / "Resume Game" buttons
+// 2.
+//  2a. [New Game]: Get a new deck
+//  2b. [Resume Game]: Retrieve save data
+// 3. Start Blackjack game
 
-// Blackjack Game
-// 1. Get a shuffled 6-decks cards and store deck ID
-// 2. Deal 1 card to player, then 1 card face-down to dealer
-// 3. Deal 1 more to player, and 1 face-up to dealer
-//  3b. If dealer has black-jack, check for win/lose/push immediately
-// 4. Show "stand" and "hit" button
-// 5. If "hit" is pressed, deal 1 card to player
-// 6. If "stand" is pressed, deal card to dealer until over 16 or bust
-// 7. Check for winner, and keep track of "win", "losses", "push"
-// 8. If there are still cards, go to step 2, otherwise step 1
+// BLACKJACK GAME FLOW
+// 1. Check current deck remaining, and get a new deck if necessary
+// 2. Draw 4 cards from deck
+// 3. Show 1st card to player
+// 4. Hide 2nd card for dealer
+// 5. Show 3rd card to player
+// 6. Show 4th card to dealer
+// 7.
+//  7a. Check if dealer or player has blackjack and end the game
+//  7b. Continue and wait for player input
+// 8.
+//  8a. [Hit]: Player press "Hit", deal 1 card to player and check for bust (if busted, end the game)
+//  8b. [Stand]: Player press "Stand", continue
+// 9. Dealer hit until dealer score is > 16
+// 10. Check game result, tally player record and end the game
+// 11.
+//  11a. [New Game]: Player record is reset, and a new deck will be drawn
+//  11b. [Continue]: Game continues with the current deck
 
 // *ignore split and insurance for now
 // **ignore bets for now
-// ***ignore "burn" cards
+// ***ignore "burn" card
+
+// TODO: Separate Player and Dealer logic to its own object/module
+// TODO: Implement local storage save/load logic
 
 import * as Cards from "./cards.js";
 
 //====================================================================================================
 // HTML
 //====================================================================================================
-
-const dealerContainer = document.querySelector(".container.dealer");
-const playerContainer = document.querySelector(".container.player");
-const dealerScoreText = document.querySelector(".container.dealer h3");
-const playerScoreText = document.querySelector(".container.player h3");
-const gameResult = document.querySelector("h4");
+const dealerCardsContainer = document.querySelector(".dealer .cards");
+const playerCardsContainer = document.querySelector(".player .cards");
+const dealerScoreText = document.querySelector(".dealer h2");
+const playerScoreText = document.querySelector(".player h2");
+const gameResult = document.querySelector("h1");
 
 const newButton = document.querySelector("button#new");
 newButton.addEventListener("click", newGame);
+const contButton = document.querySelector("button#continue");
+contButton.addEventListener("click", continueGame);
 // const resumeButton = document.querySelector("button#resume");
 // resumeButton.addEventListener("click", resumeGame);
 const hitButton = document.querySelector("button#hit");
@@ -52,19 +67,25 @@ let dealerScore = 0;
 let playerScore = 0;
 
 async function newGame() {
-  clearGame();
-
   // Get new deck
   let newDeck = await Cards.newDeck(6);
   deckId = newDeck.deck_id;
   localStorage.setItem(deckKey, deckId);
 
+  continueGame();
+}
+
+async function resumeGame() {
+  deckId = localStorage.getItem(deckKey);
+  dealer = localStorage.getItem(dealerKey);
+  player = localStorage.getItem(playerKey);
+}
+
+async function continueGame() {
+  resetGame();
+
   // Deal first set of cards
   const drawRes = await Cards.drawCards(deckId, 4);
-
-  // Reset player and dealer
-  dealer = [];
-  player = [];
   dealer.push(drawRes.cards[0]);
   player.push(drawRes.cards[1]);
   dealer.push(drawRes.cards[2]);
@@ -76,43 +97,33 @@ async function newGame() {
 
   // Show the cards in order...dealer (facedown) -> player -> dealer -> player
   showDealerCard(0, true);
-
   showPlayerCard(0);
-
   showDealerCard(1);
-
   showPlayerCard(1);
 
   // Check for blackjack
   if (isBlackjack(dealer[0].value, dealer[1].value)) {
     if (isBlackjack(player[0].value, player[1].value)) {
-      push();
+      endGame("Push!");
     } else {
-      lose();
+      endGame("Dealer Won!");
     }
   } else if (isBlackjack(player[0].value, player[1].value)) {
-    playerBlackjack();
+    endGame("Blackjack!", true);
+  } else {
+    // Show player's current score
+    showPlayerScore();
+
+    // Show buttons
+    hitButton.classList.remove("hidden");
+    standButton.classList.remove("hidden");
   }
-
-  showPlayerScore();
-
-  // Show buttons
-  hitButton.classList.remove("hidden");
-  standButton.classList.remove("hidden");
-}
-
-async function resumeGame() {
-  deckId = localStorage.getItem(deckKey);
-  dealer = localStorage.getItem(dealerKey);
-  player = localStorage.getItem(playerKey);
 }
 
 async function hit() {
   const drawRes = await Cards.drawCards(deckId, 1);
   player.push(drawRes.cards[0]);
   showPlayerCard(player.length - 1);
-
-  // Display score
   showPlayerScore();
 }
 
@@ -124,10 +135,10 @@ async function stand() {
     showDealerCard(dealer.length - 1);
     showDealerScore();
   }
-  if (dealerScore > 21) win();
-  else if (dealerScore > playerScore) lose();
-  else if (dealerScore === playerScore) push();
-  else win();
+  if (dealerScore > 21) endGame("Dealer Bust!", true);
+  else if (dealerScore > playerScore) endGame("Dealer Won!");
+  else if (dealerScore === playerScore) endGame("Push!");
+  else endGame("Player Won!", true);
 }
 
 function cardToValue(cardValue) {
@@ -150,52 +161,40 @@ function isBlackjack(card1, card2) {
   );
 }
 
-function bust() {
-  gameResult.textContent = "Bust!";
-  newButton.classList.remove("hidden");
+function endGame(result, win = false) {
+  showDealerScore();
   hitButton.classList.add("hidden");
   standButton.classList.add("hidden");
-}
-
-function push() {
-  gameResult.textContent = "Push!";
+  gameResult.classList.remove("hidden");
   newButton.classList.remove("hidden");
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
+  contButton.classList.remove("hidden");
+  gameResult.textContent = result;
 }
 
-function lose() {
-  gameResult.textContent = "Dealer Wins!";
-  newButton.classList.remove("hidden");
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
-}
+function resetGame() {
+  // Essentially, Nothing should be showing here
 
-function win() {
-  gameResult.textContent = "Win!";
-  newButton.classList.remove("hidden");
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
-}
-
-function playerBlackjack() {
-  gameResult.textContent = "Blackjack!";
-  newButton.classList.remove("hidden");
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
-}
-
-function clearGame() {
+  // Remove all cards
   for (let i = 0; i < player.length; ++i) {
     document.getElementById(`player${i}`)?.remove();
   }
   for (let i = 0; i < dealer.length; ++i) {
     document.getElementById(`dealer${i}`)?.remove();
   }
+  dealer = [];
+  player = [];
+
+  // Remove scores
   dealerScoreText.textContent = "";
   playerScoreText.textContent = "";
+
+  // Hide result text
   gameResult.textContent = "";
+  gameResult.classList.add("hidden");
+
+  // Hide buttons
   newButton.classList.add("hidden");
+  contButton.classList.add("hidden");
 }
 
 function showDealerCard(cardIndex, hide = false) {
@@ -206,7 +205,7 @@ function showDealerCard(cardIndex, hide = false) {
   } else {
     const newImg = document.createElement("img");
     newImg.setAttribute("id", `dealer${cardIndex}`);
-    dealerContainer.appendChild(newImg);
+    dealerCardsContainer.appendChild(newImg);
     newImg.src = hide ? Cards.backImgUrl : dealer[cardIndex].image;
   }
 }
@@ -219,7 +218,7 @@ function showPlayerCard(cardIndex) {
   } else {
     const newImg = document.createElement("img");
     newImg.setAttribute("id", `player${cardIndex}`);
-    playerContainer.appendChild(newImg);
+    playerCardsContainer.appendChild(newImg);
     newImg.src = player[cardIndex].image;
   }
 }
@@ -234,7 +233,7 @@ function showPlayerScore() {
   }
   playerScoreText.textContent = total;
 
-  if (total > 21) bust();
+  if (total > 21) endGame("Player Bust!");
   playerScore = total;
 }
 
@@ -242,7 +241,7 @@ function showDealerScore() {
   showDealerCard(0);
   let total = dealer.reduce((acc, card) => (acc += cardToValue(card.value)), 0);
   if (total > 21) {
-    player
+    dealer
       .filter((card) => card.value === "ACE")
       .forEach((ace) => (total -= 10));
   }
