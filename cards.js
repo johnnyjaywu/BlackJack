@@ -44,7 +44,42 @@ export async function drawCards(deckId, cardCount) {
   //     ],
   //     "remaining": 50
   // }
-  return data;
+  return data.cards.map(card => new Card(card));
 }
 
 export const backImgUrl = "https://www.deckofcardsapi.com/static/img/back.png";
+
+export function Card(data) {
+  Object.defineProperty(this, "value", {
+    get() {
+      return data.value;
+    },
+  });
+
+  Object.defineProperty(this, "number", {
+    get() {
+      switch (data.value) {
+        case "ACE":
+          return 11;
+        case "JACK":
+        case "QUEEN":
+        case "KING":
+          return 10;
+        default:
+          return Number(data.value);
+      }
+    },
+  });
+
+  Object.defineProperty(this, "image", {
+    get() {
+      return data.image;
+    },
+  });
+
+  Object.defineProperty(this, "backImage", {
+    get() {
+      return backImgUrl;
+    },
+  });
+}
