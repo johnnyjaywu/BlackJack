@@ -31,177 +31,157 @@
 // TODO: Separate Player/Dealer and Card logic to its own object/module
 // TODO: Implement local storage save/load logic
 
-import * as Cards from "./cards.js";
-import { Player } from "./player.js";
+import { Blackjack } from "./blackjack.js";
 
-//====================================================================================================
-// HTML
-//====================================================================================================
+const gameResult = document.querySelector("h1");
 const dealerTotalText = document.querySelector(".dealer h2");
 const playerTotalText = document.querySelector(".player h2");
-const gameResult = document.querySelector("h1");
 
-const newButton = document.querySelector("button#new");
-newButton.addEventListener("click", newGame);
-const contButton = document.querySelector("button#continue");
-contButton.addEventListener("click", continueGame);
-// const resumeButton = document.querySelector("button#resume");
-// resumeButton.addEventListener("click", resumeGame);
+const newGameButton = document.querySelector("button#new");
+newGameButton.addEventListener("click", onNewGameButton);
+
+const resumeButton = document.querySelector("button#resume");
+resumeButton.addEventListener("click", onResumeButton);
+
+const continueButton = document.querySelector("button#continue");
+continueButton.addEventListener("click", onContinueButton);
+
 const hitButton = document.querySelector("button#hit");
-hitButton.addEventListener("click", hit);
+hitButton.addEventListener("click", onHitButton);
+
 const standButton = document.querySelector("button#stand");
-standButton.addEventListener("click", stand);
+standButton.addEventListener("click", onStandButton);
 
-//====================================================================================================
-// GAME LOGIC
-//====================================================================================================
-const deckKey = "deck";
-const dealerKey = "dealer";
-const playerKey = "player";
+let blackjack;
+function onNewGameButton() {
+  if (!blackjack) blackjack = new Blackjack();
 
-let deckId;
-let dealer = new Player("dealer", document.querySelector(".dealer .cards"));
-let player = new Player("player", document.querySelector(".player .cards"));
-
-async function newGame() {
-  let newDeck = await Cards.newDeck(6);
-  deckId = newDeck.deck_id;
-  localStorage.setItem(deckKey, deckId);
-
-  continueGame();
+  blackjack.stateChanged = onStateChanged;
+  blackjack.displayDealer = onDealerCard;
+  blackjack.displayPlayer = onPlayerCard;
+  blackjack.newGame();
 }
 
-async function resumeGame() {
-  deckId = localStorage.getItem(deckKey);
-  dealer = localStorage.getItem(dealerKey);
-  player = localStorage.getItem(playerKey);
-  continueGame();
+function onResumeButton() {
+  if (!blackjack) blackjack = new Blackjack();
+  blackjack.load();
 }
 
-async function continueGame() {
-  resetGame();
+function onContinueButton() {
+  blackjack.play();
+}
 
-  // Deal first set of cards and show in order...dealer (facedown) -> player -> dealer -> player
-  const cards = await Cards.drawCards(deckId, 4);
-  dealer.deal(cards[0], false);
-  player.deal(cards[1]);
-  dealer.deal(cards[2]);
-  player.deal(cards[3]);
+function onHitButton() {
+  blackjack.hit();
+}
 
-  // Save
-  player.save();
-  dealer.save();
+function onStandButton() {
+  blackjack.stand();
+}
 
-  // Show player's current score
-  playerTotalText.textContent = player.total;
-
-  if (!checkBlackjack(showResult)) {
-    // Show buttons to play
-    hitButton.classList.remove("hidden");
-    standButton.classList.remove("hidden");
+function onStateChanged(state) {
+  switch (state) {
+    case Blackjack.GameState.Initial:
+      onInitialState();
+      break;
+    case Blackjack.GameState.Betting:
+      onBettingState();
+      break;
+    case Blackjack.GameState.Player:
+      onPlayerState();
+      break;
+    case Blackjack.GameState.Dealer:
+      onDealerState();
+      break;
+    case Blackjack.GameState.Result:
+      onResultState();
+      break;
   }
 }
 
-async function hit() {
-  const cards = await Cards.drawCards(deckId, 1);
-  player.deal(cards[0]);
-  playerTotalText.textContent = player.total;
-  if (player.isBust) {
-    showResult("Player Bust!");
-  }
-}
-
-async function stand() {
-  // Hide buttons so user won't accidentally press twice
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
-
-  // Flip dealer's facedown card
-  dealer.show(0);
-
-  // show total
-  dealerTotalText.textContent = dealer.total;
-
-  // Draw until total is > 16
-  while (dealer.total < 17) {
-    const cards = await Cards.drawCards(deckId, 1);
-    dealer.deal(cards[0]);
-    dealerTotalText.textContent = dealer.total;
-  }
-
-  // Check total for result
-  checkResult();
-}
-
-function checkBlackjack() {
-  let result;
-  if (dealer.hasBlackjack) {
-    // Show dealer face down card and total
-    dealer.show(0);
-    dealerTotalText.textContent = dealer.total;
-
-    if (player.hasBlackjack) {
-      result = "Push!";
-    } else {
-      result = "Dealer Blackjack!";
-    }
-
-    showResult(result);
-    return true;
-  } else if (player.hasBlackjack) {
-    // Show dealer face down card and total
-    dealer.show(0);
-    dealerTotalText.textContent = dealer.total;
-
-    result = "Player Blackjack!";
-    showResult(result, true);
-    return true;
-  }
-  return false;
-}
-
-function checkResult() {
-  let result, win;
-  if (dealer.isBust) {
-    result = "Dealer Bust!";
-    win = true;
-  } else if (dealer.total > player.total) {
-    result = "Dealer Won!";
-    win = false;
-  } else if (dealer.total == player.total) {
-    result = "Push!";
-    win = false;
-  } else {
-    result = "Player Won!";
-    win = true;
-  }
-
-  showResult(result, win);
-}
-
-function showResult(result, win) {
-  hitButton.classList.add("hidden");
-  standButton.classList.add("hidden");
+function onInitialState() {
+  newGameButton.classList.remove("hidden");
+  resumeButton.classList.remove("hidden");
   gameResult.classList.remove("hidden");
-  newButton.classList.remove("hidden");
-  contButton.classList.remove("hidden");
-  gameResult.textContent = result;
+  gameResult.textContent = document.title;
+
+  continueButton.classList.add("hidden");
+  hitButton.classList.add("hidden");
+  standButton.classList.add("hidden");
+  playerTotalText.classList.add("hidden");
+  dealerTotalText.classList.add("hidden");
 }
 
-function resetGame() {
-  // Essentially, Nothing should be showing here
-  dealer.reset();
-  player.reset();
+function onBettingState() {
+  continueButton.classList.remove("hidden");
 
-  // Remove scores
-  dealerTotalText.textContent = "";
-  playerTotalText.textContent = "";
-
-  // Hide result text
-  gameResult.textContent = "";
+  newGameButton.classList.add("hidden");
+  resumeButton.classList.add("hidden");
   gameResult.classList.add("hidden");
+  hitButton.classList.add("hidden");
+  standButton.classList.add("hidden");
+  playerTotalText.classList.add("hidden");
+  dealerTotalText.classList.add("hidden");
+  playerTotalText.textContent = "";
+  dealerTotalText.textContent = "";
+}
 
-  // Hide buttons
-  newButton.classList.add("hidden");
-  contButton.classList.add("hidden");
+function onPlayerState() {
+  hitButton.classList.remove("hidden");
+  standButton.classList.remove("hidden");
+  playerTotalText.classList.remove("hidden");
+  dealerTotalText.classList.remove("hidden");
+
+  continueButton.classList.add("hidden");
+  newGameButton.classList.add("hidden");
+  gameResult.classList.add("hidden");
+}
+
+function onDealerState() {
+  continueButton.classList.add("hidden");
+  newGameButton.classList.add("hidden");
+  gameResult.classList.add("hidden");
+  hitButton.classList.add("hidden");
+  standButton.classList.add("hidden");
+}
+
+function onResultState() {
+  continueButton.classList.remove("hidden");
+  newGameButton.classList.remove("hidden");
+  gameResult.classList.remove("hidden");
+  gameResult.textContent = blackjack.result;
+
+  hitButton.classList.add("hidden");
+  standButton.classList.add("hidden");
+}
+
+const dealerContainer = document.querySelector(".dealer .cards");
+function onDealerCard(imgUrl, id) {
+  let img = document.getElementById(id);
+  if (!img) {
+    img = document.createElement("img");
+    img.setAttribute("id", id);
+  }
+  img.src = imgUrl;
+
+  dealerContainer.appendChild(img);
+
+  if (
+    blackjack.currentState === Blackjack.GameState.Dealer ||
+    blackjack.currentState === Blackjack.GameState.Result
+  )
+    dealerTotalText.textContent = blackjack.dealerTotal;
+}
+
+const playerContainer = document.querySelector(".player .cards");
+function onPlayerCard(imgUrl, id) {
+  let img = document.getElementById(id);
+  if (!img) {
+    img = document.createElement("img");
+    img.setAttribute("id", id);
+  }
+  img.src = imgUrl;
+
+  playerContainer.appendChild(img);
+  playerTotalText.textContent = blackjack.playerTotal;
 }

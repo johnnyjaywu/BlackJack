@@ -1,23 +1,19 @@
-export function Player(name, container) {
+export function Player(name) {
   let hand = [];
   let total = 0;
   this.name = name;
-  this.container = container;
 
   this.reset = function () {
     for (let i = 0; i < hand.length; ++i) {
-      document.getElementById(`${this.name}${i}`)?.remove();
+      document.getElementById(this.getCardId(i))?.remove();
     }
     hand = [];
     total = 0;
   };
 
-  this.deal = function (card, show = true) {
+  this.deal = function (card) {
     hand.push(card);
 
-    // Show the card
-    if (show) this.show();
-    else this.hide();
     // Calculate total
     total = hand.reduce((acc, card) => (acc += card.number), 0);
 
@@ -28,36 +24,21 @@ export function Player(name, container) {
     }
   };
 
-  this.show = function (index = -1) {
-    index = index < 0 ? hand.length + index : index;
-    if (hand && index < hand.length) {
-      let id = `${this.name}${index}`;
-      let img = document.getElementById(`${id}`);
-      if (!img) {
-        img = document.createElement("img");
-        img.setAttribute("id", `${id}`);
-        if (this.container) this.container.appendChild(img);
-      }
-      img.src = hand[index].image;
-    }
-  };
-
-  this.hide = function (index = -1) {
-    index = index < 0 ? hand.length + index : index;
-    if (hand && index < hand.length) {
-      let id = `${this.name}${index}`;
-      let img = document.getElementById(`${id}`);
-      if (!img) {
-        img = document.createElement("img");
-        img.setAttribute("id", `${id}`);
-        if (this.container) this.container.appendChild(img);
-      }
-      img.src = hand[index].backImage;
-    }
-  };
-
   this.save = function () {
-    localStorage.setItem(this.name, this);
+    localStorage.setItem(this.name, JSON.stringify(this));
+  };
+
+  this.load = function() {
+    let loaded = localStorage.getItem(this.name);
+    if (loaded) {
+      this.hand = loaded.hand;
+      this.total = loaded.total;
+      this.name = loaded.name;
+    }
+  }
+
+  this.getCardId = function (index) {
+    return `${this.name}${index}`;
   };
 
   Object.defineProperty(this, "hand", {
