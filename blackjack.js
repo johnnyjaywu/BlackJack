@@ -7,6 +7,7 @@ export class Blackjack {
   //==================================================
   #deckKey = "deck";
   #gameStateKey = "gameState";
+  #resultKey = "result";
   #deckId;
   #dealer = new Player("dealer");
   #player = new Player("player");
@@ -15,11 +16,11 @@ export class Blackjack {
   // Statics
   //==================================================
   static GameState = Object.freeze({
-    Initial: Symbol("initial"),
-    Betting: Symbol("betting"),
-    Player: Symbol("player"),
-    Dealer: Symbol("dealer"),
-    Result: Symbol("result"),
+    Initial: "initial",
+    Betting: "betting",
+    Player: "player",
+    Dealer: "dealer",
+    Result: "result",
   });
 
   //==================================================
@@ -66,7 +67,7 @@ export class Blackjack {
     this.#reset();
     let newDeck = await Cards.newDeck(6);
     this.#deckId = newDeck.deck_id;
-    
+
     this.#currentState = Blackjack.GameState.Betting;
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
     this.#save();
@@ -78,6 +79,7 @@ export class Blackjack {
 
     this.#dealer.load();
     this.#player.load();
+    this.#result = localStorage.getItem(this.#resultKey);
     this.#currentState = localStorage.getItem(this.#gameStateKey);
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
   }
@@ -89,13 +91,13 @@ export class Blackjack {
     // Deal first set of cards and show in order...dealer (facedown) -> player -> dealer -> player
     const cards = await Cards.drawCards(this.#deckId, 4);
 
-    this.#dealer.deal(cards[0]);
+    this.#dealer.deal(cards[0], false);
     this.#player.deal(cards[1]);
     this.#dealer.deal(cards[2]);
     this.#player.deal(cards[3]);
 
     // Hide the first card for dealer
-    this.#tryDisplayDealer(0, false);
+    this.#tryDisplayDealer(0);
     this.#tryDisplayDealer(1);
 
     this.#tryDisplayPlayer(0);
@@ -112,7 +114,6 @@ export class Blackjack {
     const cards = await Cards.drawCards(this.#deckId, 1);
     this.#player.deal(cards[0]);
     this.#tryDisplayPlayer(-1);
-    this.#player.save();
 
     if (this.#player.isBust) {
       this.#result = "Player Bust!";
@@ -126,6 +127,7 @@ export class Blackjack {
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
 
     // Flip dealer's facedown card
+    this.#dealer.hand[0].isShowing = true;
     this.#tryDisplayDealer(0);
 
     // Draw until total is > 16
@@ -141,6 +143,16 @@ export class Blackjack {
     this.#save();
   }
 
+  displayAllCards() {
+    for (let i = 0; i < this.#dealer.hand.length; ++i) {
+      this.#tryDisplayDealer(i);
+    }
+
+    for (let i = 0; i < this.#player.hand.length; ++i) {
+      this.#tryDisplayPlayer(i);
+    }
+  }
+
   //==================================================
   // HELPERS
   //==================================================
@@ -152,15 +164,13 @@ export class Blackjack {
   #save() {
     localStorage.setItem(this.#deckKey, this.#deckId);
     localStorage.setItem(this.#gameStateKey, this.#currentState);
+    localStorage.setItem(this.#resultKey, this.#result);
     this.#dealer.save();
     this.#player.save();
   }
 
   #checkBlackjack() {
     if (this.#dealer.hasBlackjack) {
-      // Show dealer face down card and total
-      this.#tryDisplayDealer(0);
-
       if (this.#player.hasBlackjack) {
         this.#result = "Push!";
       } else {
@@ -170,8 +180,6 @@ export class Blackjack {
       this.#showResult();
       return true;
     } else if (this.#player.hasBlackjack) {
-      this.#tryDisplayDealer(0);
-
       this.#result = "Player Blackjack!";
       this.#showResult(true);
       return true;
@@ -199,28 +207,35 @@ export class Blackjack {
   }
 
   #showResult(win) {
+    // Show dealer face down card and total
+    this.#dealer.hand[0].isShowing = true;
+    this.#tryDisplayDealer(0);
+
+    // Set result
     this.#currentState = Blackjack.GameState.Result;
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
     this.#save();
   }
 
-  #tryDisplayDealer(index, show = true) {
+  #tryDisplayDealer(index) {
     index = index < 0 ? this.#dealer.hand.length + index : index;
     if (this.#displayDealer) {
-      this.#displayDealer(
-        show ? this.#dealer.hand[index].image : Cards.backImgUrl,
-        this.#dealer.getCardId(index)
-      );
+      let card = this.#dealer.hand[index];
+      let id = this.#dealer.getCardId(index);
+      if (card) {
+        this.#displayDealer(card.isShowing ? card.image : Cards.backImgUrl, id);
+      }
     }
   }
 
-  #tryDisplayPlayer(index, show = true) {
+  #tryDisplayPlayer(index) {
     index = index < 0 ? this.#player.hand.length + index : index;
     if (this.#displayPlayer) {
-      this.#displayPlayer(
-        show ? this.#player.hand[index].image : Cards.backImgUrl,
-        this.#player.getCardId(index)
-      );
+      let card = this.#player.hand[index];
+      let id = this.#player.getCardId(index);
+      if (card) {
+        this.#displayPlayer(card.isShowing ? card.image : Cards.backImgUrl, id);
+      }
     }
   }
 }

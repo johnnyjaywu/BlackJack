@@ -44,12 +44,14 @@ export async function drawCards(deckId, cardCount) {
   //     ],
   //     "remaining": 50
   // }
-  return data.cards.map(card => new Card(card));
+  return data.cards.map((card) => new Card(card));
 }
 
 export const backImgUrl = "https://www.deckofcardsapi.com/static/img/back.png";
 
-export function Card(data) {
+export function Card(data, show = true) {
+  this.isShowing = show;
+
   Object.defineProperty(this, "value", {
     get() {
       return data.value;
@@ -81,5 +83,12 @@ export function Card(data) {
     get() {
       return backImgUrl;
     },
+  });
+
+  Object.defineProperty(this, "data", {
+    get() {
+      return data;
+    },
+    enumerable: true,
   });
 }

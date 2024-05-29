@@ -52,18 +52,16 @@ hitButton.addEventListener("click", onHitButton);
 const standButton = document.querySelector("button#stand");
 standButton.addEventListener("click", onStandButton);
 
-let blackjack;
-function onNewGameButton() {
-  if (!blackjack) blackjack = new Blackjack();
+const blackjack = new Blackjack();
+blackjack.stateChanged = onStateChanged;
+blackjack.displayDealer = onDealerCard;
+blackjack.displayPlayer = onPlayerCard;
 
-  blackjack.stateChanged = onStateChanged;
-  blackjack.displayDealer = onDealerCard;
-  blackjack.displayPlayer = onPlayerCard;
+function onNewGameButton() {
   blackjack.newGame();
 }
 
 function onResumeButton() {
-  if (!blackjack) blackjack = new Blackjack();
   blackjack.load();
 }
 
@@ -134,15 +132,24 @@ function onPlayerState() {
 
   continueButton.classList.add("hidden");
   newGameButton.classList.add("hidden");
+  resumeButton.classList.add("hidden");
   gameResult.classList.add("hidden");
+  dealerTotalText.textContent = "";
+
+  // Display cards
+  blackjack.displayAllCards();
 }
 
 function onDealerState() {
   continueButton.classList.add("hidden");
   newGameButton.classList.add("hidden");
+  resumeButton.classList.add("hidden");
   gameResult.classList.add("hidden");
   hitButton.classList.add("hidden");
   standButton.classList.add("hidden");
+
+  // Display cards
+  blackjack.displayAllCards();
 }
 
 function onResultState() {
@@ -153,6 +160,10 @@ function onResultState() {
 
   hitButton.classList.add("hidden");
   standButton.classList.add("hidden");
+  resumeButton.classList.add("hidden");
+
+  // Display cards
+  blackjack.displayAllCards();
 }
 
 const dealerContainer = document.querySelector(".dealer .cards");
@@ -169,8 +180,9 @@ function onDealerCard(imgUrl, id) {
   if (
     blackjack.currentState === Blackjack.GameState.Dealer ||
     blackjack.currentState === Blackjack.GameState.Result
-  )
+  ) {
     dealerTotalText.textContent = blackjack.dealerTotal;
+  }
 }
 
 const playerContainer = document.querySelector(".player .cards");

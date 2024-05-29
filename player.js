@@ -1,3 +1,5 @@
+import { Card } from "./cards.js";
+
 export function Player(name) {
   let hand = [];
   let total = 0;
@@ -11,7 +13,8 @@ export function Player(name) {
     total = 0;
   };
 
-  this.deal = function (card) {
+  this.deal = function (card, show = true) {
+    card.isShowing = show;
     hand.push(card);
 
     // Calculate total
@@ -28,14 +31,25 @@ export function Player(name) {
     localStorage.setItem(this.name, JSON.stringify(this));
   };
 
-  this.load = function() {
-    let loaded = localStorage.getItem(this.name);
+  this.load = function () {
+    let loaded = JSON.parse(localStorage.getItem(this.name));
     if (loaded) {
-      this.hand = loaded.hand;
-      this.total = loaded.total;
+
       this.name = loaded.name;
+
+      // Create new Card from raw data
+      loaded.hand.forEach((card) => hand.push(new Card(card.data, card.isShowing)));
+      
+      // Calculate total
+      total = hand.reduce((acc, card) => (acc += card.number), 0);
+
+      if (total > 21) {
+        hand
+          .filter((card) => card.value === "ACE")
+          .forEach((ace) => (total -= 10));
+      }
     }
-  }
+  };
 
   this.getCardId = function (index) {
     return `${this.name}${index}`;
@@ -45,12 +59,14 @@ export function Player(name) {
     get() {
       return hand;
     },
+    enumerable: true,
   });
 
   Object.defineProperty(this, "total", {
     get() {
       return total;
     },
+    enumerable: true,
   });
 
   Object.defineProperty(this, "hasBlackjack", {
