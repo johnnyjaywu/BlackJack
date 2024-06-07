@@ -1,9 +1,10 @@
 import { Card } from "./cards.js";
 
-export function Player(name) {
+export function Player(name, bank) {
   let hand = [];
   let total = 0;
   this.name = name;
+  this.bank = bank;
 
   this.reset = function () {
     for (let i = 0; i < hand.length; ++i) {
@@ -36,6 +37,7 @@ export function Player(name) {
     if (loaded) {
 
       this.name = loaded.name;
+      this.bank = loaded.bank;
 
       // Create new Card from raw data
       loaded.hand.forEach((card) => hand.push(new Card(card.data, card.isShowing)));

@@ -10,29 +10,63 @@
 
 <body>
     <main>
-        <div class="dealer">
-            <h2 class=""> </h2>
-            <div class="cards">
+        <section class="container vertical" id="title">
+            <h1>100Devs Blackjack</h1>
+            <button id="new" class="">New Game</button>
+            <button id="resume" class="hidden">Resume</button>
+        </section>
 
+        <nav class="container hidden">
+            <div class="container">
+                <h2>Bank: </h2>
+                <span id="bank"></span>
             </div>
-        </div>
-
-        <h1 class="">100Devs Blackjack</h1>
-
-        <div class="player">
-            <h2 class=""></h2>
-            <div class="cards">
-
+            <div class="container">
+                <h2>Bet: </h2>
+                <span id="bet"></span>
             </div>
-            <nav>
-                <button id="new" class="">New Game</button>
-                <button id="resume" class="">Resume</button>
-                <button id="continue" class="hidden">Cont.</button>
-                <button id="hit" class="hidden">Hit</button>
-                <button id="stand" class="hidden">Stand</button>
-            </nav>
-        </div>
+        </nav>
 
+        <section class="container vertical hidden" id="betting">
+            <div class="container wrap">
+                <button class="chip" id="bet1">1</button>
+                <button class="chip" id="bet5">5</button>
+                <button class="chip" id="bet25">25</button>
+                <button class="chip" id="bet50">50</button>
+                <button class="chip" id="bet100">100</button>
+                <button class="chip" id="bet500">500</button>
+                <button class="chip" id="bet1000">1000</button>
+            </div>
+            <button id="allin">All In</button>
+            <div class="container wrap">
+                <button class="hidden" id="confirm">Confirm</button>
+                <button class="hidden" id="cancel">Cancel</button>
+            </div>
+        </section>
+
+        <section class="container vertical hidden" id="playing">
+            <div id="dealer">
+                <h2></h2>
+                <div class="cards">
+
+                </div>
+            </div>
+
+            <h1 class="hidden" id="result"></h1>
+
+            <div id="player">
+                <h2></h2>
+                <div class="cards">
+
+                </div>
+            </div>
+
+            <div class="container">
+                <button id="hit">Hit</button>
+                <button id="stand">Stand</button>
+                <button class="hidden" id="continue">Continue</button>
+            </div>
+        </section>
 
     </main>
 

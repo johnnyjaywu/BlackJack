@@ -2,6 +2,11 @@ import * as Cards from "./cards.js";
 import { Player } from "./player.js";
 
 export class Blackjack {
+  constructor(stateChanged) {
+    this.#stateChanged = stateChanged;
+    this.#load();
+  }
+
   //==================================================
   // PRIVATE FIELDS
   //==================================================
@@ -10,16 +15,15 @@ export class Blackjack {
   #resultKey = "result";
   #deckId;
   #dealer = new Player("dealer");
-  #player = new Player("player");
+  #player = new Player("player", 1000);
+  #stateChanged;
 
   //==================================================
   // Statics
   //==================================================
   static GameState = Object.freeze({
-    Initial: "initial",
     Betting: "betting",
-    Player: "player",
-    Dealer: "dealer",
+    Playing: "playing",
     Result: "result",
   });
 
@@ -27,14 +31,13 @@ export class Blackjack {
   // PROPERTIES
   //==================================================
 
+  get hasSave() {
+    return this.#deckId;
+  }
+
   #currentState;
   get currentState() {
     return this.#currentState;
-  }
-
-  #stateChanged;
-  set stateChanged(callback) {
-    this.#stateChanged = callback;
   }
 
   #displayDealer;
@@ -45,6 +48,21 @@ export class Blackjack {
   #displayPlayer;
   set displayPlayer(callback) {
     this.#displayPlayer = callback;
+  }
+
+  get playerBank() {
+    return this.#player.bank;
+  }
+  set playerBank(value) {
+    this.#player.bank = value;
+  }
+
+  #bet = 0;
+  get bet() {
+    return this.#bet;
+  }
+  set bet(value) {
+    this.#bet = value;
   }
 
   get dealerTotal() {
@@ -63,24 +81,20 @@ export class Blackjack {
   //==================================================
   // METHODS
   //==================================================
-  async newGame() {
+  async newGame(resetSave = false) {
     this.#reset();
-    let newDeck = await Cards.newDeck(6);
-    this.#deckId = newDeck.deck_id;
+    if (resetSave) {
+      this.#player.bank = 1000;
+      let newDeck = await Cards.newDeck(6);
+      this.#deckId = newDeck.deck_id;
+    }
 
     this.#currentState = Blackjack.GameState.Betting;
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
     this.#save();
   }
 
-  load() {
-    this.#deckId = localStorage.getItem(this.#deckKey);
-    if (!this.#deckId) return;
-
-    this.#dealer.load();
-    this.#player.load();
-    this.#result = localStorage.getItem(this.#resultKey);
-    this.#currentState = localStorage.getItem(this.#gameStateKey);
+  resume() {
     if (this.#stateChanged) this.#stateChanged(this.#currentState);
   }
 
@@ -104,7 +118,7 @@ export class Blackjack {
     this.#tryDisplayPlayer(1);
 
     if (!this.#checkBlackjack(this.#showResult)) {
-      this.#currentState = Blackjack.GameState.Player;
+      this.#currentState = Blackjack.GameState.Playing;
       if (this.#stateChanged) this.#stateChanged(this.#currentState);
     }
     this.#save();
@@ -123,9 +137,6 @@ export class Blackjack {
   }
 
   async stand() {
-    this.#currentState = Blackjack.GameState.Dealer;
-    if (this.#stateChanged) this.#stateChanged(this.#currentState);
-
     // Flip dealer's facedown card
     this.#dealer.hand[0].isShowing = true;
     this.#tryDisplayDealer(0);
@@ -139,8 +150,6 @@ export class Blackjack {
 
     // Check total for result
     this.#checkResult();
-
-    this.#save();
   }
 
   displayAllCards() {
@@ -167,6 +176,14 @@ export class Blackjack {
     localStorage.setItem(this.#resultKey, this.#result);
     this.#dealer.save();
     this.#player.save();
+  }
+
+  #load() {
+    this.#deckId = localStorage.getItem(this.#deckKey);
+    this.#dealer.load();
+    this.#player.load();
+    this.#result = localStorage.getItem(this.#resultKey);
+    this.#currentState = localStorage.getItem(this.#gameStateKey);
   }
 
   #checkBlackjack() {
@@ -210,6 +227,14 @@ export class Blackjack {
     // Show dealer face down card and total
     this.#dealer.hand[0].isShowing = true;
     this.#tryDisplayDealer(0);
+
+    // Calculate bet
+    if (win) {
+      this.#player.bank += this.#bet * 2;
+    } else if (this.#result.toLowerCase().includes("push")) {
+      this.#player.bank = this.#bet;
+    }
+    this.#bet = 0;
 
     // Set result
     this.#currentState = Blackjack.GameState.Result;
