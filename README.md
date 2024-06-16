@@ -1,6 +1,7 @@
 
-# My Awesome Project
+# Simple Blackjack
 A 100Devs project using Deck of Cards API https://www.deckofcardsapi.com/ to create a [Simple Blackjack](https://johnnyjaywu.github.io/blackjack/) app.
+
 Currently features:
 - simple betting
 - basic mechanics of "hit" or "stand"
